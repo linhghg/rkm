@@ -12,7 +12,7 @@ kernel_data::kernel_data(const std::size_t _n_sample, const std::size_t _n_featu
 
 kernel_data::~kernel_data()
 {
-    clear_date();
+    clear_data();
 }
 
 void kernel_data::clear_data()

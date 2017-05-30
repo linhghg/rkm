@@ -3,17 +3,20 @@
 namespace RKM
 {
 
-    rkm::rkm(const std::size_t i, const std::size_t j)
+    rkm::rkm(const std::string& input_file_name)
     {
-        kd = new kernel_date(i, j);
+        std::ifstream fin (input_file_name, std::ios_base::in);
+        int temp;
+        fin>>temp>>delim(':');
+        std::cout<<temp<<std::endl;
+        fin>>temp;
+        std::cout<<temp<<std::endl;
+        fin.close();
     }
 
     rkm::~rkm()
     {
-        if (kd)
-        {
-            delete kd;
-        }
+        delete kd;
     }
 
 } // namespace rkm

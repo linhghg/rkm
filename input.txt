@@ -1,0 +1,3 @@
+train : train.dat
+test : test.dat
+n_feature : 4

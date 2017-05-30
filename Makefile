@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wconversion -O3 -fPIC
 SHVER = 2
 OS = $(shell uname)
 
-all: kernel_data.o #svm-train svm-predict svm-scale
+all: kernel_data.o rkm.o main
 
 #lib: svm.o
 #	if [ "$(OS)" = "Darwin" ]; then \
@@ -17,6 +17,11 @@ all: kernel_data.o #svm-train svm-predict svm-scale
 #	$(CXX) $(CFLAGS) -c rkm.cpp
 kernel_data.o: kernel_data.cpp kernel_data.h
 	$(CXX) $(CFLAGS) -c kernel_data.cpp
+rkm.o: rkm.cpp rkm.h
+	$(CXX) $(CFLAGS) -c rkm.cpp
+main: main.cpp rkm.o kernel_data.o
+	$(CXX) $(CFLAGS) main.cpp rkm.o kernel_data.o -o main
+
 
 #svm-predict: svm-predict.c svm.o
 #	$(CXX) $(CFLAGS) svm-predict.c svm.o -o svm-predict -lm
