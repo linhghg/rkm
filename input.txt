@@ -1,3 +1,4 @@
-train : train.dat
-test : test.dat
-n_feature : 4
+task : circle
+train_file : ./data_gen/train.dat
+test_file :  ./data_gen/test.dat
+verbose : 1

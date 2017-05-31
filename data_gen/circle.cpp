@@ -16,7 +16,7 @@ int main(){
             {
                 label = -1;
             }
-            fout1<<label<<": ";
+            fout1<<label<<" : ";
             double val = i/10.0;
             fout1<<val<<" ";
             val = 1.2*rand()/RAND_MAX;

@@ -2,8 +2,10 @@
 #define RKM_H_
 #include <assert.h>
 #include <string>
+#include <vector>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "kernel_data.h"
 
 namespace RKM
@@ -15,8 +17,17 @@ class rkm
         rkm(const std::string& input_file_name);
         ~rkm();
     private:
+        // Data related
         kernel_data* kd;
-}; //class kernel_data
+        std::string train_file;
+        std::string test_file;
+
+        // Model related
+
+        // Program related
+        int verbose;
+
+}; //class rkm
 
 struct delim
 {
