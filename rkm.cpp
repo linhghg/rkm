@@ -150,9 +150,12 @@ namespace RKM
         size_t n_sample = kd->get_n_sample();
 
         // TBD
+        // Initialization
         beta.resize(n_feature, 1.0);
         beta[1] = 0.0;
         beta[3] = 0.0;
+
+        alpha.resize(n_sample, 0.0);
     }
 
 } // namespace rkm
