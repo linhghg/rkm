@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <iostream>
 #include <limits>
+#include <math.h>
 
 namespace RKM
 {
@@ -35,6 +36,16 @@ class kernel_data
 
         void print_data(std::ostream& os) const;
 
+        // Kernel
+        void set_kernel(const std::string& kernel_name);
+        void set_gamma(double _gamma);
+        void set_tau(double _tau);
+        void print_kernel(std::ostream& os) const;
+
+        // atomized kernel, i-th and j-th vectors, k-th feature
+        double kernel_one(size_t i, size_t j, size_t k) const;
+        double K(size_t i, size_t j, const std::vector<double>& v) const;
+
     private:
         // Data
         std::vector<double> x;  // samples/features
@@ -52,6 +63,7 @@ class kernel_data
         kernel_type kern_type;
         double gamma;
         double tau;
+
 };
 
 }   // namespace rkm

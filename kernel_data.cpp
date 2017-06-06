@@ -123,4 +123,54 @@ void kernel_data::print_data(std::ostream& os) const
     }
 }
 
+void kernel_data::print_kernel(std::ostream& os) const
+{
+    os<<"Kernel type: "<<kern_type<<"\n";
+    os<<"Gamma: "<<gamma<<"\n";
+    os<<"Tau: "<<tau<<"\n";
+}
+
+void kernel_data::set_kernel(const std::string& kernel_name)
+{
+    if (kernel_name.compare("Gaussian") == 0)
+    {
+        kern_type = GAUSSIAN;
+    }
+}
+
+void kernel_data::set_gamma(double _gamma)
+{
+    gamma = _gamma;
+}
+
+void kernel_data::set_tau(double _tau)
+{
+    tau = _tau;
+}
+
+double kernel_data::kernel_one(size_t i, size_t j, size_t k) const
+{
+    double res = 0;
+    switch(kern_type)
+    {
+        case GAUSSIAN:
+        {
+            double d = x[i*n_feature+k] - x[j*n_feature+k];
+            res = exp(-gamma*d*d);
+            break;
+        }
+    }
+    return res;
+}
+
+double kernel_data::K(size_t i, size_t j, const std::vector<double>& v) const
+{
+    double res = 0;
+    for (size_t k=0;k<n_feature;++k)
+    {
+        res += v[k]*kernel_one(i, j, k);
+    }
+    return res;
+}
+
 } // namespace rkm

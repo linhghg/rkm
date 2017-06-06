@@ -2,3 +2,9 @@ task : circle
 train_file : ./data_gen/train.dat
 test_file :  ./data_gen/test.dat
 verbose : 1
+Cp : 1
+Cn : 1
+eps : 1e-3
+kernel : Gaussian
+gamma : 1
+tau : 1e-3
