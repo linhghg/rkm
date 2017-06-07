@@ -34,10 +34,21 @@ class rkm
         std::vector<double> alpha;
         std::vector<double> beta;
 
+        enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
+        std::vector<alpha_status_type> alpha_status;
+        bool is_upper_bound(size_t i) { return alpha_status[i] == UPPER_BOUND; }
+        bool is_lower_bound(size_t i) { return alpha_status[i] == LOWER_BOUND; }
+        bool is_free(size_t i) { return alpha_status[i] == FREE; }
+
         // Program related
         int verbose;
         // Encapsultate kernel function for readability
         double K(size_t i, size_t j) const;
+
+        // subroutins
+        double get_C(size_t i) const;
+        void update_alpha_status(size_t i);
+        int select_working_set(size_t& i, size_t& j) const;
 
 }; //class rkm
 
