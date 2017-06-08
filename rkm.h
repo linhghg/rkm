@@ -29,6 +29,7 @@ class rkm
         double Cn;
         // Stoping Criteria
         double eps;
+        double tau;
 
         // Solution
         std::vector<double> alpha;
@@ -36,9 +37,11 @@ class rkm
 
         enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
         std::vector<alpha_status_type> alpha_status;
-        bool is_upper_bound(size_t i) { return alpha_status[i] == UPPER_BOUND; }
-        bool is_lower_bound(size_t i) { return alpha_status[i] == LOWER_BOUND; }
-        bool is_free(size_t i) { return alpha_status[i] == FREE; }
+        bool is_upper_bound(size_t i) const { return alpha_status[i] == UPPER_BOUND; }
+        bool is_lower_bound(size_t i) const { return alpha_status[i] == LOWER_BOUND; }
+        bool is_free(size_t i) const { return alpha_status[i] == FREE; }
+        bool is_in_I_up(size_t i) const;
+        bool is_in_I_low(size_t i) const;
 
         // Program related
         int verbose;
@@ -48,7 +51,7 @@ class rkm
         // subroutins
         double get_C(size_t i) const;
         void update_alpha_status(size_t i);
-        int select_working_set(size_t& i, size_t& j) const;
+        bool select_working_set(size_t& i, size_t& j) const;
 
 }; //class rkm
 

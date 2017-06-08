@@ -127,7 +127,6 @@ void kernel_data::print_kernel(std::ostream& os) const
 {
     os<<"Kernel type: "<<kern_type<<"\n";
     os<<"Gamma: "<<gamma<<"\n";
-    os<<"Tau: "<<tau<<"\n";
 }
 
 void kernel_data::set_kernel(const std::string& kernel_name)
@@ -141,11 +140,6 @@ void kernel_data::set_kernel(const std::string& kernel_name)
 void kernel_data::set_gamma(double _gamma)
 {
     gamma = _gamma;
-}
-
-void kernel_data::set_tau(double _tau)
-{
-    tau = _tau;
 }
 
 double kernel_data::kernel_one(size_t i, size_t j, size_t k) const

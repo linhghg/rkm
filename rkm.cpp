@@ -11,7 +11,6 @@ namespace RKM
         size_t n_feature = 0;
         size_t n_sample = 0;
         double gamma;
-        double tau;
 
         std::string str;
         // input file
@@ -104,7 +103,6 @@ namespace RKM
         // set parameters
         kd -> set_kernel(kernel_name);
         kd -> set_gamma(gamma);
-        kd -> set_tau(tau);
 
         // read data into the kernel_data
         fin.open(train_file, std::ios_base::in);
@@ -139,6 +137,28 @@ namespace RKM
         }
     }
 
+    bool rkm::is_in_I_up(size_t i) const
+    {
+        double yi = kd->get_label(i);
+        if ( (yi > 0) && (alpha[i] < get_C(i)) )
+            return true;
+        else if ( (yi < 0) && (alpha[i] > 0) )
+            return true;
+        else
+            return false;
+    }
+
+    bool rkm::is_in_I_low(size_t i) const
+    {
+        double yi = kd->get_label(i);
+        if ( (yi < 0) && (alpha[i] < get_C(i)) )
+            return true;
+        else if ( (yi > 0) && (alpha[i] > 0) )
+            return true;
+        else
+            return false;
+    }
+
     double rkm::K(size_t i, size_t j) const
     {
         return kd->K(i, j, beta);
@@ -170,7 +190,7 @@ namespace RKM
         for (size_t i=0;i<n_sample;++i)
         {
             G[i] = -1;
-            G_bar[i] = 0;
+            //G_bar[i] = 0;
         }
         //for (size_t i=0;i<n_sample;++i)
         //{
@@ -210,11 +230,32 @@ namespace RKM
                 //if(shrinking) do_shrinking();
                 std::cout<<".";
             }
+
+            size_t i, j;
+            if (!select_working_set(i, j))
+                break;
+
+            ++iter;
+
+            // update alpha[i] and alpha[j], handle bounds carefully
+            double C_i = get_C(i);
+            double C_j = get_C(j);
+            double y_i = kd->get_label(i);
+            double y_j = kd->get_label(j);
+            double old_alpha_i = alpha[i];
+            double old_alpha_j = alpha[j];
+
+            double a = K(i, i) + K(j, j) - 2*K(i, j);
+            if (a <= 0)
+                a = tau;
+            double b = - y_i*G[i] + y_j*G[j];
+            alpha[i] += y_i*b/a;
+            alpha[j] -= y_j*b/a;
         } // while(iter < max_iter)
 
     } // void rkm::solve()
 
-    int rkm::select_working_set(size_t& i, size_t& j) const
+    bool rkm::select_working_set(size_t& i, size_t& j) const
     {
         // return i,j such that
         // i: maximizes -y_i * grad(f)_i, i in I_up(\alpha)
@@ -222,95 +263,57 @@ namespace RKM
         //    (if quadratic coefficeint <= 0, replace it with tau)
         //    -y_j*grad(f)_j < -y_i*grad(f)_i, j in I_low(\alpha)
 
-        double Gmax = -INF;
-        double Gmax2 = -INF;
-        int Gmax_idx = -1;
-        int Gmin_idx = -1;
-        double obj_diff_min = INF;
+        size_t n_feature = kd->get_n_feature();
+        double Gmax = -std::numeric_limits<double>::infinity();
+        double Gmin = std::numeric_limits<double>::infinity();
+        size_t i_idx = -1;
+        size_t j_idx = -1;
 
-        for(int t=0;t<active_size;t++)
-            if(y[t]==+1)
-            {
-                if(!is_upper_bound(t))
-                    if(-G[t] >= Gmax)
-                    {
-                        Gmax = -G[t];
-                        Gmax_idx = t;
-                    }
-            }
-            else
-            {
-                if(!is_lower_bound(t))
-                    if(G[t] >= Gmax)
-                    {
-                        Gmax = G[t];
-                        Gmax_idx = t;
-                    }
-            }
-
-        int i = Gmax_idx;
-        const Qfloat *Q_i = NULL;
-        if(i != -1) // NULL Q_i not accessed: Gmax=-INF if i=-1
-            Q_i = Q->get_Q(i,active_size);
-
-        for(int j=0;j<active_size;j++)
+        // select i
+        for (size_t idx=0;idx<n_sample;++idx)
         {
-            if(y[j]==+1)
+            if (is_in_I_up(idx))
             {
-                if (!is_lower_bound(j))
+                double obj_i = - kd->get_label(idx)*G[idx];
+                if (obj_i >= Gmax)
                 {
-                    double grad_diff=Gmax+G[j];
-                    if (G[j] >= Gmax2)
-                        Gmax2 = G[j];
-                    if (grad_diff > 0)
-                    {
-                        double obj_diff;
-                        double quad_coef = QD[i]+QD[j]-2.0*y[i]*Q_i[j];
-                        if (quad_coef > 0)
-                            obj_diff = -(grad_diff*grad_diff)/quad_coef;
-                        else
-                            obj_diff = -(grad_diff*grad_diff)/TAU;
-
-                        if (obj_diff <= obj_diff_min)
-                        {
-                            Gmin_idx=j;
-                            obj_diff_min = obj_diff;
-                        }
-                    }
+                    i_idx = idx;
+                    Gmax = obj_i;
                 }
             }
-            else
-            {
-                if (!is_upper_bound(j))
-                {
-                    double grad_diff= Gmax-G[j];
-                    if (-G[j] >= Gmax2)
-                        Gmax2 = -G[j];
-                    if (grad_diff > 0)
-                    {
-                        double obj_diff;
-                        double quad_coef = QD[i]+QD[j]+2.0*y[i]*Q_i[j];
-                        if (quad_coef > 0)
-                            obj_diff = -(grad_diff*grad_diff)/quad_coef;
-                        else
-                            obj_diff = -(grad_diff*grad_diff)/TAU;
+        }
 
-                        if (obj_diff <= obj_diff_min)
-                        {
-                            Gmin_idx=j;
-                            obj_diff_min = obj_diff;
-                        }
+        // select j
+        double obj_j_min = std::numeric_limits<double>::infinity();
+        for (size_t idx=0;idx<n_sample;++idx)
+        {
+            if (is_in_I_low(idx))
+            {
+                double tmp = - kd->get_label(idx)*G[idx];
+                double b = Gmax - tmp;
+                if (tmp <= Gmin)
+                    Gmin = tmp;
+                if (b > 0)
+                {
+                    double a = K(i_idx, i_idx) + K(idx, idx) - 2*K(i_idx, idx);
+                    if (a <= 0)
+                        a = tau;
+                    double obj_j = -(b*b)/a;
+                    if (obj_j <= obj_j_min)
+                    {
+                        obj_j_min = obj_j;
+                        j_idx = idx;
                     }
                 }
             }
         }
 
-        if(Gmax+Gmax2 < eps || Gmin_idx == -1)
-        return 1;
+        if(Gmax-Gmin < eps || i_idx == -1 || j_idx == -1)
+            return false;
 
-        out_i = Gmax_idx;
-        out_j = Gmin_idx;
-        return 0;
+        i = i_idx;
+        j = j_idx;
+        return true;
     } // int rkm::select_working_set(size_t& i, size_t& j) const
 
     double rkm::get_C(size_t i) const

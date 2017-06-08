@@ -7,4 +7,4 @@ Cn : 1
 eps : 1e-3
 kernel : Gaussian
 gamma : 1
-tau : 1e-3
+tau : 1e-12

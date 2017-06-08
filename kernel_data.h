@@ -39,7 +39,6 @@ class kernel_data
         // Kernel
         void set_kernel(const std::string& kernel_name);
         void set_gamma(double _gamma);
-        void set_tau(double _tau);
         void print_kernel(std::ostream& os) const;
 
         // atomized kernel, i-th and j-th vectors, k-th feature
@@ -62,7 +61,6 @@ class kernel_data
         // Kenrel related
         kernel_type kern_type;
         double gamma;
-        double tau;
 
 };
 
