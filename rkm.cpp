@@ -251,7 +251,37 @@ namespace RKM
             double b = - y_i*G[i] + y_j*G[j];
             alpha[i] += y_i*b/a;
             alpha[j] -= y_j*b/a;
+
+            // project alpha to the feasible region
+            double sum = y_i*old_alpha_i + y_j*old_alpha_j;
+            if (alpha[i] > C_i)
+                alpha[i] = C_i;
+            else if (alpha[i] < 0)
+                alpha[i] = 0;
+            alpha[j] = y_j*(sum - y_i*alpha[i]);
+            if (alpha[j] > C_j)
+                alpha[j] = C_j;
+            else if (alpha[j] < 0)
+                alpha[j] = 0;
+            alpha[i] = y_i*(sum - y_j*alpha[j]);
+
+            // update gradient
+            double d_i = alpha[i] - old_alpha_i;
+            double d_j = alpha[j] - old_alpha_j;
+            for (size_t idx=0;idx<n_sample;++idx)
+            {
+                double y_idx = kd->get_label(idx);
+                G[idx] += y_i*y_idx*d_i*K(i, idx) + y_j*y_idx*d_j*K(j, idx);
+            }
+
         } // while(iter < max_iter)
+
+        if(iter >= max_iter)
+        {
+            std::cout<<"\nWARNING: reaching max number of iterations\n";
+        }
+
+        rho = calculate_rho();
 
     } // void rkm::solve()
 
@@ -315,6 +345,49 @@ namespace RKM
         j = j_idx;
         return true;
     } // int rkm::select_working_set(size_t& i, size_t& j) const
+
+    double rkm::calculate_rho() const
+    {
+        size_t n_sample = kd->get_n_sample();
+        double r;
+        size_t nr_free = 0;
+        double ub = std::numeric_limits<double>::infinity();
+        double lb = -std::numeric_limits<double>::infinity();
+        double sum_free = 0;
+
+        for(size_t i=0;i<n_sample;i++)
+        {
+            double y_i = kd->get_label(i);
+            double yG = y_i*G[i];
+
+            if(is_upper_bound(i))
+            {
+                if(y_i==-1)
+                    ub = min(ub,yG);
+                else
+                    lb = max(lb,yG);
+            }
+            else if(is_lower_bound(i))
+            {
+                if(y_i==+1)
+                    ub = min(ub,yG);
+                else
+                    lb = max(lb,yG);
+            }
+            else
+            {
+                ++nr_free;
+                sum_free += yG;
+            }
+        }
+
+        if(nr_free>0)
+            r = sum_free/nr_free;
+        else
+            r = (ub+lb)/2;
+
+        return r;
+    }
 
     double rkm::get_C(size_t i) const
     {

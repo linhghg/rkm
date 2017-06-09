@@ -34,6 +34,7 @@ class rkm
         // Solution
         std::vector<double> alpha;
         std::vector<double> beta;
+        double rho; // -b as defined in LibSVM
 
         enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
         std::vector<alpha_status_type> alpha_status;
@@ -52,6 +53,7 @@ class rkm
         double get_C(size_t i) const;
         void update_alpha_status(size_t i);
         bool select_working_set(size_t& i, size_t& j) const;
+        double calculate_rho() const;
 
 }; //class rkm
 
