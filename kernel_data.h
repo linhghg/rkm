@@ -32,7 +32,9 @@ class kernel_data
         size_t get_n_sample() const;
         size_t get_n_feature() const;
 
+        // feature scaling
         void scale_features();
+        void scale_one_vector(std::vector<double>& x) const;
 
         void print_data(std::ostream& os) const;
 
@@ -42,8 +44,9 @@ class kernel_data
         void print_kernel(std::ostream& os) const;
 
         // atomized kernel, i-th and j-th vectors, k-th feature
-        double kernel_one(size_t i, size_t j, size_t k) const;
+        double kernel_one(double x_ik, double x_jk) const;
         double K(size_t i, size_t j, const std::vector<double>& v) const;
+        double K(size_t i, const std::vector<double>& x_j, const std::vector<double>& v) const;
 
     private:
         // Data

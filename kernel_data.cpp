@@ -110,6 +110,16 @@ void kernel_data::scale_features()
     }
 } //void kernel_data::scale_features()
 
+void kernel_data::scale_one_vector(std::vector<double>& x) const
+{
+    assert(x.size() == n_feature);
+    for (size_t j=0;j<n_feature;++j)
+    {
+        x[j] = (x[j] - min_x[j]) / (max_x[j] - min_x[j]);
+        assert(x[j] == x[j]); // NaN check
+    }
+}
+
 void kernel_data::print_data(std::ostream& os) const
 {
     for (size_t i=0;i<t.size();++i)
@@ -142,15 +152,20 @@ void kernel_data::set_gamma(double _gamma)
     gamma = _gamma;
 }
 
-double kernel_data::kernel_one(size_t i, size_t j, size_t k) const
+double kernel_data::kernel_one(double x_ik, double x_jk) const
 {
     double res = 0;
     switch(kern_type)
     {
         case GAUSSIAN:
         {
-            double d = x[i*n_feature+k] - x[j*n_feature+k];
+            double d = x_ik - x_jk;
             res = exp(-gamma*d*d);
+            break;
+        }
+        case LINEAR:
+        {
+            res = x_ik * x_jk;
             break;
         }
     }
@@ -162,7 +177,18 @@ double kernel_data::K(size_t i, size_t j, const std::vector<double>& v) const
     double res = 0;
     for (size_t k=0;k<n_feature;++k)
     {
-        res += v[k]*kernel_one(i, j, k);
+        res += v[k]*kernel_one(x[i*n_feature+k], x[j*n_feature+k]);
+    }
+    return res;
+}
+
+double kernel_data::K(size_t i, const std::vector<double>& x_j, const std::vector<double>& v) const
+{
+    assert(x_j.size() == n_feature);
+    double res = 0;
+    for (size_t k=0;k<n_feature;++k)
+    {
+        res += v[k]*kernel_one(x[i*n_feature+k], x_j[k]);
     }
     return res;
 }

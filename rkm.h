@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include "kernel_data.h"
 
 namespace RKM
@@ -17,11 +18,20 @@ class rkm
         rkm(const std::string& input_file_name);
         ~rkm();
         void solve();
+        double predict(const std::vector<double>& x) const;
+        void test() const;
+        // number of relevance vectors/features
+        int get_n_rv() const;
+        int get_n_rf() const;
+        // write/read alpha, beta
+        void write_model_file() const;
+        //void read_model_file();
     private:
         // Data related
         kernel_data* kd;
         std::string train_file;
         std::string test_file;
+        std::string model_file;
 
         // Model related
         // Cost coefficients
@@ -35,6 +45,9 @@ class rkm
         std::vector<double> alpha;
         std::vector<double> beta;
         double rho; // -b as defined in LibSVM
+
+        // Gradient
+        std::vector<double> G;
 
         enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
         std::vector<alpha_status_type> alpha_status;

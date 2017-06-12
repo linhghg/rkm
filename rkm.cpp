@@ -26,6 +26,10 @@ namespace RKM
             {
                 fin>>test_file;
             }
+            else if (str.compare("model_file") == 0)
+            {
+                fin>>model_file;
+            }
             else if (str.compare("verbose") == 0)
             {
                 fin>>verbose;
@@ -166,12 +170,16 @@ namespace RKM
 
     void rkm::solve()
     {
+        if (verbose)
+        {
+            std::cout<<"Training started...\n";
+        }
         size_t n_feature = kd->get_n_feature();
         size_t n_sample = kd->get_n_sample();
 
         // TBD
         // Initialization
-        beta.resize(n_feature, 1.0);
+        beta.resize(n_feature, 0.5);
         beta[1] = 0.0;
         beta[3] = 0.0;
 
@@ -185,13 +193,13 @@ namespace RKM
         // TBD: shrinking heuristic
 
         // Gradient init
-        std::vector<double> G(n_sample);
-        std::vector<double> G_bar(n_sample);
-        for (size_t i=0;i<n_sample;++i)
-        {
-            G[i] = -1;
-            //G_bar[i] = 0;
-        }
+        G.resize(n_sample, -1.0);
+        //std::vector<double> G_bar(n_sample);
+        //for (size_t i=0;i<n_sample;++i)
+        //{
+        //    G[i] = -1;
+        //    G_bar[i] = 0;
+        //}
         //for (size_t i=0;i<n_sample;++i)
         //{
         //    if (!is_lower_bound(i))
@@ -212,21 +220,21 @@ namespace RKM
 
         // optimization step
 
-        int iter = 0;
-        int max_iter = n_sample*100;
-        if (n_sample>std::numeric_limits<int>::max()/100)
+        size_t iter = 0;
+        size_t max_iter = n_sample*100;
+        if (n_sample>std::numeric_limits<size_t>::max()/100)
         {
-            max_iter = std::numeric_limits<int>::max();
+            max_iter = std::numeric_limits<size_t>::max();
         }
         if (max_iter < 10000000) max_iter = 10000000;
-        int counter = min(n_sample,1000)+1;
+        size_t counter = (n_sample>1000 ? 1000 : n_sample)+1;
 
         while(iter < max_iter)
         {
             // show progress, shrinking TBD
             if(--counter == 0)
             {
-                counter = min(n_sample,1000);
+                counter = (n_sample>1000 ? 1000 : n_sample);
                 //if(shrinking) do_shrinking();
                 std::cout<<".";
             }
@@ -282,8 +290,26 @@ namespace RKM
         }
 
         rho = calculate_rho();
+        if (verbose)
+        {
+            std::cout<<"Training completed!\n";
+        }
 
     } // void rkm::solve()
+
+    double rkm::predict(const std::vector<double>& x) const
+    {
+        size_t n_sample = kd->get_n_sample();
+        double res = -rho;
+        for (size_t i=0;i<n_sample;++i)
+        {
+            if (alpha[i]>0) //non-zero, support vectors
+            {
+                res += alpha[i] * (kd->get_label(i)) * (kd->K(i, x, beta));
+            }
+        }
+        return res;
+    }
 
     bool rkm::select_working_set(size_t& i, size_t& j) const
     {
@@ -294,10 +320,11 @@ namespace RKM
         //    -y_j*grad(f)_j < -y_i*grad(f)_i, j in I_low(\alpha)
 
         size_t n_feature = kd->get_n_feature();
+        size_t n_sample = kd->get_n_sample();
         double Gmax = -std::numeric_limits<double>::infinity();
         double Gmin = std::numeric_limits<double>::infinity();
-        size_t i_idx = -1;
-        size_t j_idx = -1;
+        size_t i_idx = n_sample;
+        size_t j_idx = n_sample;
 
         // select i
         for (size_t idx=0;idx<n_sample;++idx)
@@ -338,7 +365,7 @@ namespace RKM
             }
         }
 
-        if(Gmax-Gmin < eps || i_idx == -1 || j_idx == -1)
+        if(Gmax-Gmin < eps || i_idx >= n_sample || j_idx >= n_sample)
             return false;
 
         i = i_idx;
@@ -363,16 +390,16 @@ namespace RKM
             if(is_upper_bound(i))
             {
                 if(y_i==-1)
-                    ub = min(ub,yG);
+                    ub = std::min(ub,yG);
                 else
-                    lb = max(lb,yG);
+                    lb = std::max(lb,yG);
             }
             else if(is_lower_bound(i))
             {
                 if(y_i==+1)
-                    ub = min(ub,yG);
+                    ub = std::min(ub,yG);
                 else
-                    lb = max(lb,yG);
+                    lb = std::max(lb,yG);
             }
             else
             {
@@ -401,6 +428,135 @@ namespace RKM
         else if(alpha[i] <= 0)
             alpha_status[i] = LOWER_BOUND;
         else alpha_status[i] = FREE;
+    }
+
+    void rkm::test() const
+    {
+        if (verbose)
+        {
+            std::cout<<"\nTesting...\n\n";
+        }
+        std::string str;
+        // testing data input file
+        std::ifstream fin (test_file, std::ios_base::in);
+        // calc n_sample and n_feature
+        size_t n_sample_test = 0;
+        size_t n_feature_test = 0;
+        while (std::getline(fin, str))
+        {
+            n_sample_test++;
+            if (n_feature_test == 0)
+            {
+                std::stringstream ss(str);
+                double temp;
+                ss>>temp>>delim(':');
+                while (ss>>temp)
+                {
+                    n_feature_test++;
+                }
+            }
+        }
+        fin.close();
+
+        if (verbose)
+        {
+            std::cout<<"Found "<<n_sample_test<<" samples with "<<n_feature_test<<" features.\n";
+        }
+        assert(n_feature_test == kd->get_n_feature());
+
+        // Store target values and predicted values
+        std::vector<double> target(n_sample_test);
+        std::vector<double> predicted(n_sample_test);
+
+        // read data into the kernel_data
+        fin.open(test_file, std::ios_base::in);
+        std::vector<double> x(n_feature_test);
+
+        int err_pos = 0;
+        int err_neg = 0;
+        int n_pos = 0;
+        int n_neg = 0;
+
+        for (size_t i=0;i<n_sample_test;++i)
+        {
+            fin>>target[i]>>delim(':');
+            for (size_t j=0;j<n_feature_test;++j)
+            {
+                fin>>x[j];
+            }
+            kd->scale_one_vector(x);
+            predicted[i] = predict(x);
+            if (target[i]>0)
+            {
+                ++n_pos;
+                if (predicted[i]<0)
+                    ++err_pos;
+            }
+            else
+            {
+                ++n_neg;
+                if (predicted[i]>0)
+                    ++err_neg;
+            }
+            std::cout<<target[i]<<" : "<<predicted[i]<<"\n";
+        }
+        fin.close();
+
+        std::cout<<"========================\n";
+        std::cout<<"RV #: "<<get_n_rv()<<"  RF #: "<<get_n_rf()<<"\n";
+        std::cout<<"========================\n";
+        std::cout<<"Positive Error: "<<err_pos*1.0/n_pos<<" ("<<err_pos<<", "<<n_pos<<")"<<"\n";
+        std::cout<<"Negative Error: "<<err_neg*1.0/n_neg<<" ("<<err_neg<<", "<<n_neg<<")"<<"\n";
+        std::cout<<"Overall  Error: "<<(err_pos+err_neg)*1.0/n_sample_test<<"\n";
+        std::cout<<"========================\n";
+
+    } //rkm::rkm(const std::string& input_file_name)
+
+    int rkm::get_n_rv() const
+    {
+        size_t n_sample = kd->get_n_sample();
+        int n_rv = 0;
+        for (size_t i=0;i<n_sample;++i)
+        {
+            if (alpha[i] > 0)
+            {
+                ++n_rv;
+            }
+        }
+        return n_rv;
+    }
+
+    int rkm::get_n_rf() const
+    {
+        size_t n_feature = kd->get_n_feature();
+        int n_rf = 0;
+        for (size_t i=0;i<n_feature;++i)
+        {
+            if (beta[i] > 0)
+            {
+                ++n_rf;
+            }
+        }
+        return n_rf;
+    }
+
+    void rkm::write_model_file() const
+    {
+        size_t n_sample = kd->get_n_sample();
+        size_t n_feature = kd->get_n_feature();
+
+        std::ofstream fout (model_file, std::ios_base::out);
+        for (size_t i=0;i<n_sample;++i)
+        {
+            fout<<alpha[i]<<" ";
+        }
+        fout<<"\n";
+        for (size_t j=0;j<n_feature;++j)
+        {
+            fout<<beta[j]<<" ";
+        }
+        fout<<"\n";
+        fout.close();
     }
 
 } // namespace rkm
