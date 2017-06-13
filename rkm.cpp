@@ -168,6 +168,16 @@ namespace RKM
         return kd->K(i, j, beta);
     }
 
+    double rkm::Y(size_t i) const
+    {
+        return kd->get_label(i);
+    }
+
+    double rkm::Q(size_t i, size_t j, size_t k) const
+    {
+        return (kd->kernel_one(i, j, k))*(kd->get_label(i))*(kd->get_label(j));
+    }
+
     void rkm::solve()
     {
         if (verbose)
@@ -179,9 +189,7 @@ namespace RKM
 
         // TBD
         // Initialization
-        beta.resize(n_feature, 0.5);
-        beta[1] = 0.0;
-        beta[3] = 0.0;
+        beta.resize(n_feature, 1.0);
 
         alpha.resize(n_sample, 0.0);
         alpha_status.resize(n_sample);
@@ -193,7 +201,10 @@ namespace RKM
         // TBD: shrinking heuristic
 
         // Gradient init
-        G.resize(n_sample, -1.0);
+        Ga.resize(n_sample, -1.0);
+        Gb.resize(n_feature, 0.0);
+        Q_alpha.reserve(n_sample*n_feature);
+        Q_alpha.resize(n_sample*n_feature, 0.0);
         //std::vector<double> G_bar(n_sample);
         //for (size_t i=0;i<n_sample;++i)
         //{
@@ -256,7 +267,7 @@ namespace RKM
             double a = K(i, i) + K(j, j) - 2*K(i, j);
             if (a <= 0)
                 a = tau;
-            double b = - y_i*G[i] + y_j*G[j];
+            double b = - y_i*Ga[i] + y_j*Ga[j];
             alpha[i] += y_i*b/a;
             alpha[j] -= y_j*b/a;
 
@@ -273,13 +284,35 @@ namespace RKM
                 alpha[j] = 0;
             alpha[i] = y_i*(sum - y_j*alpha[j]);
 
-            // update gradient
+            // this section updates gradient
             double d_i = alpha[i] - old_alpha_i;
             double d_j = alpha[j] - old_alpha_j;
-            for (size_t idx=0;idx<n_sample;++idx)
+            // update Q_alpha
+            for (size_t idx_i=0;idx_i<n_sample;++idx_i)
             {
-                double y_idx = kd->get_label(idx);
-                G[idx] += y_i*y_idx*d_i*K(i, idx) + y_j*y_idx*d_j*K(j, idx);
+                for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+                {
+                    Q_alpha[idx_i*n_feature+idx_k] += d_i*Q(i, idx_i, idx_k) + d_j*Q(j, idx_i, idx_k);
+                }
+            }
+            // update Ga
+            for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+            {
+                Ga[idx_i] = -1;
+                for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+                {
+                    Ga[idx_i] += beta[idx_k]*Q_alpha[idx_i*n_feature+idx_k];
+                }
+            }
+            // update Gb
+            for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+            {
+                Gb[idx_k] = 0;
+                for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+                {
+                    Gb[idx_k] += alpha[idx_i]*Q_alpha[idx_i*n_feature+idx_k];
+                }
+                Gb[idx_k] *= 0.5;
             }
 
         } // while(iter < max_iter)
@@ -331,7 +364,7 @@ namespace RKM
         {
             if (is_in_I_up(idx))
             {
-                double obj_i = - kd->get_label(idx)*G[idx];
+                double obj_i = - kd->get_label(idx)*Ga[idx];
                 if (obj_i >= Gmax)
                 {
                     i_idx = idx;
@@ -346,7 +379,7 @@ namespace RKM
         {
             if (is_in_I_low(idx))
             {
-                double tmp = - kd->get_label(idx)*G[idx];
+                double tmp = - kd->get_label(idx)*Ga[idx];
                 double b = Gmax - tmp;
                 if (tmp <= Gmin)
                     Gmin = tmp;
@@ -385,7 +418,7 @@ namespace RKM
         for(size_t i=0;i<n_sample;i++)
         {
             double y_i = kd->get_label(i);
-            double yG = y_i*G[i];
+            double yG = y_i*Ga[i];
 
             if(is_upper_bound(i))
             {

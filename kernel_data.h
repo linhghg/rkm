@@ -45,6 +45,7 @@ class kernel_data
 
         // atomized kernel, i-th and j-th vectors, k-th feature
         double kernel_one(double x_ik, double x_jk) const;
+        double kernel_one(size_t i, size_t j, size_t k) const;
         double K(size_t i, size_t j, const std::vector<double>& v) const;
         double K(size_t i, const std::vector<double>& x_j, const std::vector<double>& v) const;
 

@@ -152,6 +152,11 @@ void kernel_data::set_gamma(double _gamma)
     gamma = _gamma;
 }
 
+double kernel_data::kernel_one(size_t i, size_t j, size_t k) const
+{
+    return kernel_one(x[i*n_feature+k], x[j*n_feature+k]);
+}
+
 double kernel_data::kernel_one(double x_ik, double x_jk) const
 {
     double res = 0;

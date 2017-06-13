@@ -46,8 +46,10 @@ class rkm
         std::vector<double> beta;
         double rho; // -b as defined in LibSVM
 
-        // Gradient
-        std::vector<double> G;
+        // Gradient related
+        std::vector<double> Ga;
+        std::vector<double> Gb;
+        std::vector<double> Q_alpha;
 
         enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
         std::vector<alpha_status_type> alpha_status;
@@ -59,8 +61,10 @@ class rkm
 
         // Program related
         int verbose;
-        // Encapsultate kernel function for readability
+        // Encapsultate for readability
         double K(size_t i, size_t j) const;
+        double Y(size_t i) const;
+        double Q(size_t i, size_t j, size_t k) const;
 
         // subroutins
         double get_C(size_t i) const;
