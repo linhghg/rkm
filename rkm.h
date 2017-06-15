@@ -70,6 +70,7 @@ class rkm
         double get_C(size_t i) const;
         void update_alpha_status(size_t i);
         bool select_working_set(size_t& i, size_t& j) const;
+        bool select_working_feature(size_t& k) const;
         double calculate_rho() const;
 
 }; //class rkm

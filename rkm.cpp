@@ -180,6 +180,7 @@ namespace RKM
 
     void rkm::solve()
     {
+        double Cb = 1;
         if (verbose)
         {
             std::cout<<"Training started...\n";
@@ -250,11 +251,25 @@ namespace RKM
                 std::cout<<".";
             }
 
-            size_t i, j;
+            size_t i, j, k;
             if (!select_working_set(i, j))
                 break;
 
             ++iter;
+
+            for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+            {
+                beta[idx_k] = 0;
+                for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+                {
+                    beta[idx_k] += (Cb-alpha[idx_i])*Q_alpha[idx_i*n_feature+idx_k];
+                }
+                if (beta[idx_k]<1)  // lower bound TBD
+                {
+                    beta[idx_k] = 1;
+                }
+                std::cout<<beta[idx_k]<<"\t";
+            }
 
             // update alpha[i] and alpha[j], handle bounds carefully
             double C_i = get_C(i);
@@ -283,6 +298,12 @@ namespace RKM
             else if (alpha[j] < 0)
                 alpha[j] = 0;
             alpha[i] = y_i*(sum - y_j*alpha[j]);
+
+            // update beta
+            //if (select_working_feature(k))
+            //{
+            //    beta[k] = 1 - beta[k];
+            //}
 
             // this section updates gradient
             double d_i = alpha[i] - old_alpha_i;
@@ -313,7 +334,9 @@ namespace RKM
                     Gb[idx_k] += alpha[idx_i]*Q_alpha[idx_i*n_feature+idx_k];
                 }
                 Gb[idx_k] *= 0.5;
+                //std::cout<<Gb[idx_k]<<"\t";
             }
+            std::cout<<"\n";
 
         } // while(iter < max_iter)
 
@@ -352,7 +375,7 @@ namespace RKM
         //    (if quadratic coefficeint <= 0, replace it with tau)
         //    -y_j*grad(f)_j < -y_i*grad(f)_i, j in I_low(\alpha)
 
-        size_t n_feature = kd->get_n_feature();
+        //size_t n_feature = kd->get_n_feature();
         size_t n_sample = kd->get_n_sample();
         double Gmax = -std::numeric_limits<double>::infinity();
         double Gmin = std::numeric_limits<double>::infinity();
@@ -405,6 +428,31 @@ namespace RKM
         j = j_idx;
         return true;
     } // int rkm::select_working_set(size_t& i, size_t& j) const
+
+    bool rkm::select_working_feature(size_t& k) const
+    {
+        size_t n_feature = kd->get_n_feature();
+        double Gmax = -std::numeric_limits<double>::infinity();
+        size_t k_idx = n_feature;
+
+        // select feature
+        for (size_t idx=0;idx<n_feature;++idx)
+        {
+            double tmp = Gb[idx] * (2*beta[idx] - 1);
+            if (tmp > Gmax)
+            {
+                Gmax = tmp;
+                k_idx = idx;
+            }
+        }
+        if (Gmax > 0 && k_idx < n_feature)
+        {
+            k = k_idx;
+            return true;
+        }
+        else
+            return false;
+    }
 
     double rkm::calculate_rho() const
     {
@@ -528,10 +576,10 @@ namespace RKM
             else
             {
                 ++n_neg;
-                if (predicted[i]>0)
+                if (predicted[i]>=0)
                     ++err_neg;
             }
-            std::cout<<target[i]<<" : "<<predicted[i]<<"\n";
+            //std::cout<<target[i]<<" : "<<predicted[i]<<"\n";
         }
         fin.close();
 
