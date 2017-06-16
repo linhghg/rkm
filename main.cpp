@@ -6,5 +6,6 @@ int main(int argc, char* argv[]){
     RKM::rkm solver(str);
     solver.solve();
     solver.write_model_file();
+    solver.read_model_file();
     solver.test();
 }

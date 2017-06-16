@@ -640,4 +640,30 @@ namespace RKM
         fout.close();
     }
 
+    void rkm::read_model_file(const std::string& model_file_name)
+    {
+        size_t n_sample = kd->get_n_sample();
+        size_t n_feature = kd->get_n_feature();
+
+        alpha.resize(n_sample, 0.0);
+        beta.resize(n_feature, 0.0);
+
+        std::ifstream fin (model_file_name, std::ios_base::in);
+        for (size_t i=0;i<n_sample;++i)
+        {
+            fin>>alpha[i];
+        }
+        for (size_t j=0;j<n_feature;++j)
+        {
+            fin>>beta[j];
+        }
+        fin.close();
+        rho = calculate_rho();
+    }
+
+    void rkm::read_model_file()
+    {
+        read_model_file(model_file);
+    }
+
 } // namespace rkm

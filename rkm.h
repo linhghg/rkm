@@ -25,7 +25,8 @@ class rkm
         int get_n_rf() const;
         // write/read alpha, beta
         void write_model_file() const;
-        //void read_model_file();
+        void read_model_file(const std::string& model_file_name);
+        void read_model_file();
     private:
         // Data related
         kernel_data* kd;
