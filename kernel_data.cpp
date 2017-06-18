@@ -92,10 +92,10 @@ void kernel_data::scale_features()
     }
 
     // check max_x - min_x > 0
-    for (size_t j=0;j<n_feature;++j)
-    {
-        assert(max_x[j]>min_x[j]);
-    }
+    //for (size_t j=0;j<n_feature;++j)
+    //{
+    //    assert(max_x[j]>min_x[j]);
+    //}
 
     // Scale the data
     // Normalization: x' = (x-min)/(max-min)
@@ -104,7 +104,14 @@ void kernel_data::scale_features()
         for (size_t j=0;j<n_feature;++j)
         {
             size_t idx = i*n_feature+j;
-            x[idx] = (x[idx] - min_x[j]) / (max_x[j] - min_x[j]);
+            if (max_x[j] - min_x[j] == 0)
+            {
+                x[idx] = x[idx] - min_x[j];
+            }
+            else
+            {
+                x[idx] = (x[idx] - min_x[j]) / (max_x[j] - min_x[j]);
+            }
             assert(x[idx] == x[idx]); // NaN check
         }
     }
@@ -115,7 +122,14 @@ void kernel_data::scale_one_vector(std::vector<double>& x) const
     assert(x.size() == n_feature);
     for (size_t j=0;j<n_feature;++j)
     {
-        x[j] = (x[j] - min_x[j]) / (max_x[j] - min_x[j]);
+        if (max_x[j] - min_x[j] == 0)
+        {
+            x[j] = x[j] - min_x[j];
+        }
+        else
+        {
+            x[j] = (x[j] - min_x[j]) / (max_x[j] - min_x[j]);
+        }
         assert(x[j] == x[j]); // NaN check
     }
 }
@@ -145,6 +159,10 @@ void kernel_data::set_kernel(const std::string& kernel_name)
     {
         kern_type = GAUSSIAN;
     }
+    else if (kernel_name.compare("Fast_Gaussian") == 0)
+    {
+        kern_type = FAST_GAUSSIAN;
+    }
 }
 
 void kernel_data::set_gamma(double _gamma)
@@ -166,6 +184,17 @@ double kernel_data::kernel_one(double x_ik, double x_jk) const
         {
             double d = x_ik - x_jk;
             res = exp(-gamma*d*d);
+            break;
+        }
+        case FAST_GAUSSIAN:
+        {
+            double d = x_ik - x_jk;
+            double tmp = 1-gamma*d*d/16;  //1+x/n
+            tmp *= tmp; // ^2
+            tmp *= tmp; // ^4
+            tmp *= tmp; // ^8
+            tmp *= tmp; // ^16
+            res = tmp;
             break;
         }
         case LINEAR:

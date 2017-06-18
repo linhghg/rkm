@@ -18,6 +18,8 @@ class rkm
         rkm(const std::string& input_file_name);
         ~rkm();
         void solve();
+        void solve_no_fs();
+        void solve_iter();
         double predict(const std::vector<double>& x) const;
         void test() const;
         // number of relevance vectors/features

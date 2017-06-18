@@ -30,3 +30,6 @@
 
 # program output
 *.out
+*.dat
+mnist/
+.DS_Store

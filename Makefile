@@ -19,8 +19,10 @@ kernel_data.o: kernel_data.cpp kernel_data.h
 	$(CXX) $(CFLAGS) -c kernel_data.cpp
 rkm.o: rkm.cpp rkm.h
 	$(CXX) $(CFLAGS) -c rkm.cpp
-main: main.cpp rkm.o kernel_data.o
-	$(CXX) $(CFLAGS) main.cpp rkm.o kernel_data.o -o main
+timer.o: timer.cpp timer.h
+	$(CXX) $(CFLAGS) -c timer.cpp
+main: main.cpp rkm.o kernel_data.o timer.o
+	$(CXX) $(CFLAGS) main.cpp rkm.o kernel_data.o timer.o -o main
 
 
 #svm-predict: svm-predict.c svm.o

@@ -9,7 +9,7 @@
 namespace RKM
 {
 
-enum kernel_type {LINEAR, GAUSSIAN};
+enum kernel_type {LINEAR, GAUSSIAN, FAST_GAUSSIAN};
 
 class kernel_data
 {

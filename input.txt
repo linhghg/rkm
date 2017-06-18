@@ -3,9 +3,9 @@ train_file : ./data_gen/train.dat
 test_file :  ./data_gen/test.dat
 model_file : ./model.out
 verbose : 1
-Cp : 1
-Cn : 1
+Cp : 10
+Cn : 10
 eps : 1e-3
-kernel : Gaussian
+kernel : Fast_Gaussian
 gamma : 1
 tau : 1e-12
