@@ -896,17 +896,27 @@ namespace RKM
         size_t n_feature = kd->get_n_feature();
         size_t n_sample = kd->get_n_sample();
         double bmax = 1.0/n_feature;
+        double bmin = 0;
 
         // Initialization
         beta.resize(n_feature, 1.0/n_feature);
         double sum_beta = 1.0;
         double obj = 0.0;
+        double d_obj = 0.0;
         double prev_obj = 0.0;
 
-        while (1)
+        int max_ext_iter = 100;
+        int ext_iter = 0;
+
+        while (1) // alpha and beta ext iteration
         {
+            if (verbose)
+            {
+                std::cout<<"\tUpdating alpha...\n";
+            }
             // alpha iteration
-            alpha.resize(n_sample, 0.0);
+            //alpha.resize(n_sample, 0.0);
+            alpha = std::vector<double>(n_sample, 0.0);
             alpha_status.resize(n_sample);
             for (size_t i=0;i<n_sample;++i)
             {
@@ -914,7 +924,11 @@ namespace RKM
             }
 
             // Gradient init
-            Ga.resize(n_sample, -1.0);
+            //Ga.resize(n_sample, -1.0);
+            Ga = std::vector<double>(n_sample, -1.0);
+
+            prev_obj = obj;
+            obj = 0;
 
             size_t iter = 0;
             size_t max_iter = n_sample*100;
@@ -928,18 +942,19 @@ namespace RKM
             while(iter < max_iter)
             {
                 // show progress, shrinking TBD
-                std::cout<<iter<<": ";
                 if(--counter == 0)
                 {
                     counter = (n_sample>1000 ? 1000 : n_sample);
                     //if(shrinking) do_shrinking();
-                    std::cout<<".";
+                    //std::cout<<".";
+                    std::cout<<"\t\t"<<iter<<": "<<d_obj<<"\n";
                 }
 
                 size_t i, j;
-                if (!select_working_set(i, j))
+                if (!select_working_set(i, j, d_obj))
                     break;
 
+                obj -= d_obj;
                 ++iter;
 
                 // update alpha[i] and alpha[j], handle bounds carefully
@@ -989,175 +1004,80 @@ namespace RKM
             {
                 std::cout<<"\nWARNING: reaching max number of iterations\n";
             }
-        } // while (1), alpha and beta exterior loop
 
-        Gb.resize(n_feature, 0.0);
-        Q_alpha.reserve(n_sample*n_feature);
-        Q_alpha.resize(n_sample*n_feature, 0.0);
-        for (size_t i=0;i<n_sample;++i)
-        {
-            double tmp = 0;
-            for (size_t j=0;j<n_sample;++j)
+            if (verbose)
             {
-                tmp += K(i, j);
-            }
-            Ga[i] -= Cb*tmp;
-        }
-
-        // optimization step
-
-        size_t iter = 0;
-        size_t max_iter = n_sample*100;
-        if (n_sample>std::numeric_limits<size_t>::max()/100)
-        {
-            max_iter = std::numeric_limits<size_t>::max();
-        }
-        if (max_iter < 10000000) max_iter = 10000000;
-        size_t counter = (n_sample>1000 ? 1000 : n_sample)+1;
-
-        while(iter < max_iter)
-        {
-            // show progress, shrinking TBD
-            if(--counter == 0)
-            {
-                counter = (n_sample>1000 ? 1000 : n_sample);
-                std::cout<<".";
+                std::cout<<"\tUpdating beta...\n";
             }
 
-            size_t i, j, k;
-            if (!select_working_set(i, j))
-            {
-                // update beta
-                for (size_t idx_k=0;idx_k<n_feature;++idx_k)
-                {
-                    beta[idx_k] = 0;
-                    for (size_t idx_i=0;idx_i<n_sample;++idx_i)
-                    {
-                        beta[idx_k] = alpha[idx_i]*Q_alpha[idx_i*n_feature+idx_k];
-                    }
-                    if (beta[idx_k]<0)
-                    {
-                        beta[idx_k] = 0;
-                    }
-                    if (beta[idx_k]>1.0/n_feature)
-                    {
-                        beta[idx_k] = 1.0/n_feature;
-                    }
-                    std::cout<<beta[idx_k]<<"\t";
-                }
-                std::cout<<"\n";
-
-                // update Ga
-                for (size_t idx_i=0;idx_i<n_sample;++idx_i)
-                {
-                    //Ga[idx_i] = Ga_const[idx_i];
-                    Ga[idx_i] = -1;
-                    for (size_t idx_k=0;idx_k<n_feature;++idx_k)
-                    {
-                        Ga[idx_i] += beta[idx_k]*Q_alpha[idx_i*n_feature+idx_k];
-                    }
-                }
-
-                    break;
-                eps *= 10;
-                if (!select_working_set(i, j))
-                    break;
-                else
-                    eps /= 10;
-            }
-
-            ++iter;
-
-            // update alpha[i] and alpha[j], handle bounds carefully
-            double C_i = get_C(i);
-            double C_j = get_C(j);
-            double y_i = kd->get_label(i);
-            double y_j = kd->get_label(j);
-            double old_alpha_i = alpha[i];
-            double old_alpha_j = alpha[j];
-
-            // for gaussian kernel
-            //double a = K(i, i) + K(j, j) - 2*K(i, j);
-            double a = 2*sum_beta - 2*K(i, j);
-            if (a <= 0)
-                a = tau;
-            double b = - y_i*Ga[i] + y_j*Ga[j];
-            alpha[i] += y_i*b/a;
-            alpha[j] -= y_j*b/a;
-
-            // project alpha to the feasible region
-            double sum = y_i*old_alpha_i + y_j*old_alpha_j;
-            if (alpha[i] > C_i)
-                alpha[i] = C_i;
-            else if (alpha[i] < 0)
-                alpha[i] = 0;
-            alpha[j] = y_j*(sum - y_i*alpha[i]);
-            if (alpha[j] > C_j)
-                alpha[j] = C_j;
-            else if (alpha[j] < 0)
-                alpha[j] = 0;
-            alpha[i] = y_i*(sum - y_j*alpha[j]);
+            if (prev_obj - obj < eps)
+                break;
+            else
+                std::cout<<"\tEXT iteration improvement: "<<prev_obj - obj<<"\n";
 
             // update beta
-            //if (select_working_feature(k))
-            //{
-            //    beta[k] = 1 - beta[k];
-            //}
-
-            // this section updates gradient
-            double d_i = alpha[i] - old_alpha_i;
-            double d_j = alpha[j] - old_alpha_j;
-
-            // update Ga
-            //for (size_t idx_i=0;idx_i<n_sample;++idx_i)
-            //{
-            //    double y_idx = kd->get_label(idx_i);
-            //    Ga[idx_i] += d_i*y_i*y_idx*K(idx_i, i) + d_j*y_j*y_idx*K(idx_i, j);
-            //}
-
-            // update Gb
-            //for (size_t idx_k=0;idx_k<n_feature;++idx_k)
-            //{
-            //    Gb[idx_k] += d_i*Q(i, idx_i, idx_k) + d_j*Q(j, idx_i, idx_k);
-            //}
-
-            // update Q_alpha
-            for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+            double beta_d_obj = 0;
+            std::vector<double> new_beta(n_feature);
+            double sum = 0;
+            for (size_t idx_k=0;idx_k<n_feature;++idx_k)
             {
-                for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+                new_beta[idx_k] = 0;
+                for (size_t idx_i=0;idx_i<n_sample;++idx_i)
                 {
-                    Q_alpha[idx_i*n_feature+idx_k] += d_i*Q(i, idx_i, idx_k) + d_j*Q(j, idx_i, idx_k);
+                    double tmp = 0;
+                    for (size_t idx_j=0;idx_j<n_sample;++idx_j)
+                    {
+                        if (alpha[idx_j]>0)
+                        {
+                            tmp += Q(idx_i, idx_j, idx_k)*alpha[idx_j];
+                        }
+                    }
+                    new_beta[idx_k] += (Cb - alpha[idx_i])*tmp;
+                    //new_beta[idx_k] += (Cb)*tmp;
+                    //new_beta[idx_k] += (alpha[idx_i])*tmp;
                 }
+                double temp = new_beta[idx_k];
+                if (new_beta[idx_k]<0)
+                {
+                    new_beta[idx_k] = 0;
+                }
+                sum += new_beta[idx_k];
+                //if (new_beta[idx_k]>1.0/n_feature)
+                //{
+                //    new_beta[idx_k] = 1.0/n_feature;
+                //}
+                //std::cout<<new_beta[idx_k]<<"\t";
+                //beta_d_obj -= new_beta[idx_k]*(new_beta[idx_k]/2.0-temp);
+                //beta_d_obj += beta[idx_k]*(beta[idx_k]/2.0-temp);
             }
-
-            // update Ga
-            for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+            for (size_t idx_k=0;idx_k<n_feature;++idx_k)
             {
-                //Ga[idx_i] = Ga_const[idx_i];
-                Ga[idx_i] = -1;
-                for (size_t idx_k=0;idx_k<n_feature;++idx_k)
-                {
-                    Ga[idx_i] += beta[idx_k]*Q_alpha[idx_i*n_feature+idx_k];
-                }
+                new_beta[idx_k] /= sum;
+                //std::cout<<new_beta[idx_k]<<"\t";
             }
-            // update Gb
-            //for (size_t idx_k=0;idx_k<n_feature;++idx_k)
+            //std::cout<<"\n";
+            //size_t i, j;
+            //if (!select_working_set(i, j, obj))
             //{
-            //    Gb[idx_k] = 0;
-            //    for (size_t idx_i=0;idx_i<n_sample;++idx_i)
-            //    {
-            //        Gb[idx_k] += alpha[idx_i]*Q_alpha[idx_i*n_feature+idx_k];
-            //    }
-            //    Gb[idx_k] *= 0.5;
-            //    //std::cout<<Gb[idx_k]<<"\t";
+            //    break;
             //}
-
-        } // while(iter < max_iter)
-
-        if(iter >= max_iter)
-        {
-            std::cout<<"\nWARNING: reaching max number of iterations\n";
-        }
+            //std::cout<<"\t\tOBJ: "<<obj<<"\n";
+            //if (beta_d_obj<eps)
+            //{
+            //    break;
+            //}
+            //else
+            //{
+            //    beta = new_beta;
+            //}
+            if (++ext_iter > max_ext_iter)
+            {
+                std::cout<<"\nWARNING: reaching max number of EXT iterations\n";
+                break;
+            }
+            beta = new_beta;
+            //std::cout<<"\t\t"<<obj<<"\n";
+        } // while (1), alpha and beta exterior loop
 
         rho = calculate_rho();
         if (verbose)
