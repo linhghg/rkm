@@ -11,8 +11,9 @@ int main(int argc, char* argv[]){
     run_time.stop("## Loading data time");
 
     run_time.start();
-    //solver.solve();
-    solver.solve_no_fs();
+    solver.solve();
+    //solver.solve_no_fs();
+    //solver.solve_iter();
     run_time.stop("## Training time");
 
     solver.write_model_file();

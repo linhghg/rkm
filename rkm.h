@@ -40,6 +40,7 @@ class rkm
         // Cost coefficients
         double Cp;
         double Cn;
+        double Cb;
         // Stoping Criteria
         double eps;
         double tau;
@@ -73,8 +74,10 @@ class rkm
         double get_C(size_t i) const;
         void update_alpha_status(size_t i);
         bool select_working_set(size_t& i, size_t& j) const;
+        bool select_working_set(size_t& i, size_t& j, double& delta_obj) const;
         bool select_working_feature(size_t& k) const;
         double calculate_rho() const;
+        double sum_of_beta() const;
 
 }; //class rkm
 

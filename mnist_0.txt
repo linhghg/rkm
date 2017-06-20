@@ -4,8 +4,8 @@ test_file :  ./mnist/mnist_test_0.dat
 model_file : ./mnist_model_0.out
 verbose : 1
 Cp : 2
-Cn : 1
-Cb : 1
+Cn : 2
+Cb : 2
 eps : 1e-3
 kernel : Fast_Gaussian
 gamma : 10

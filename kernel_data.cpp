@@ -211,7 +211,8 @@ double kernel_data::K(size_t i, size_t j, const std::vector<double>& v) const
     double res = 0;
     for (size_t k=0;k<n_feature;++k)
     {
-        res += v[k]*kernel_one(x[i*n_feature+k], x[j*n_feature+k]);
+        if (v[k]!=0)
+            res += v[k]*kernel_one(x[i*n_feature+k], x[j*n_feature+k]);
     }
     return res;
 }
@@ -222,7 +223,8 @@ double kernel_data::K(size_t i, const std::vector<double>& x_j, const std::vecto
     double res = 0;
     for (size_t k=0;k<n_feature;++k)
     {
-        res += v[k]*kernel_one(x[i*n_feature+k], x_j[k]);
+        if (v[k]!=0)
+            res += v[k]*kernel_one(x[i*n_feature+k], x_j[k]);
     }
     return res;
 }
