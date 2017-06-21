@@ -8,6 +8,7 @@
 #include <sstream>
 #include <algorithm>
 #include "kernel_data.h"
+#include "timer.h"
 
 namespace RKM
 {

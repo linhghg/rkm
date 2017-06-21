@@ -9,7 +9,7 @@
 namespace RKM
 {
 
-enum kernel_type {LINEAR, GAUSSIAN, FAST_GAUSSIAN};
+enum kernel_type {LINEAR, GAUSSIAN, FAST_GAUSSIAN, LOOKUP_GAUSSIAN};
 
 class kernel_data
 {
@@ -48,6 +48,7 @@ class kernel_data
         double kernel_one(size_t i, size_t j, size_t k) const;
         double K(size_t i, size_t j, const std::vector<double>& v) const;
         double K(size_t i, const std::vector<double>& x_j, const std::vector<double>& v) const;
+        void init_gaussian_loopup_table();
 
     private:
         // Data
@@ -65,6 +66,8 @@ class kernel_data
         // Kenrel related
         kernel_type kern_type;
         double gamma;
+        std::vector<double> lookup_tab;
+        static const size_t tab_size;
 
 };
 

@@ -109,8 +109,8 @@ namespace RKM
         // vector size allocation
         kd = new kernel_data(n_sample, n_feature);
         // set parameters
+        kd -> set_gamma(gamma); // this has to be prior to set_kernel for lookup_gaussian
         kd -> set_kernel(kernel_name);
-        kd -> set_gamma(gamma);
 
         // read data into the kernel_data
         fin.open(train_file, std::ios_base::in);
@@ -893,6 +893,7 @@ namespace RKM
         {
             std::cout<<"Training started...\n";
         }
+        RKM::timer run_time;
         size_t n_feature = kd->get_n_feature();
         size_t n_sample = kd->get_n_sample();
         double bmax = 1.0/n_feature;
@@ -915,7 +916,7 @@ namespace RKM
                 std::cout<<"\tUpdating alpha...\n";
             }
             // alpha iteration
-            //alpha.resize(n_sample, 0.0);
+            run_time.start();
             alpha = std::vector<double>(n_sample, 0.0);
             alpha_status.resize(n_sample);
             for (size_t i=0;i<n_sample;++i)
@@ -1004,16 +1005,18 @@ namespace RKM
             {
                 std::cout<<"\nWARNING: reaching max number of iterations\n";
             }
-
-            if (verbose)
-            {
-                std::cout<<"\tUpdating beta...\n";
-            }
+            run_time.stop("\t#### Alpha iteration run time");
 
             if (prev_obj - obj < eps)
                 break;
             else
                 std::cout<<"\tEXT iteration improvement: "<<prev_obj - obj<<"\n";
+
+            if (verbose)
+            {
+                std::cout<<"\tUpdating beta...\n";
+            }
+            run_time.start();
 
             // update beta
             double beta_d_obj = 0;
@@ -1021,6 +1024,8 @@ namespace RKM
             double sum = 0;
             for (size_t idx_k=0;idx_k<n_feature;++idx_k)
             {
+                if (idx_k/100 == idx_k*1.0/100)
+                    std::cout<<"\t\tFeature: "<< idx_k<<"\n";
                 new_beta[idx_k] = 0;
                 for (size_t idx_i=0;idx_i<n_sample;++idx_i)
                 {
@@ -1076,6 +1081,7 @@ namespace RKM
                 break;
             }
             beta = new_beta;
+            run_time.stop("\t#### Beta iteration run time");
             //std::cout<<"\t\t"<<obj<<"\n";
         } // while (1), alpha and beta exterior loop
 

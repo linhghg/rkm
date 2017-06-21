@@ -163,6 +163,11 @@ void kernel_data::set_kernel(const std::string& kernel_name)
     {
         kern_type = FAST_GAUSSIAN;
     }
+    else if (kernel_name.compare("Lookup_Gaussian") == 0)
+    {
+        kern_type = LOOKUP_GAUSSIAN;
+        init_gaussian_loopup_table();
+    }
 }
 
 void kernel_data::set_gamma(double _gamma)
@@ -180,6 +185,22 @@ double kernel_data::kernel_one(double x_ik, double x_jk) const
     double res = 0;
     switch(kern_type)
     {
+        case LOOKUP_GAUSSIAN:
+        {
+            double d = x_ik - x_jk;
+            if (d<0) d = -d;
+            size_t idx = (size_t)(d*tab_size);
+            double ratio = d*tab_size - idx;
+            if (ratio == 0)
+            {
+                res = lookup_tab[idx];
+            }
+            else
+            {
+                res = lookup_tab[idx]*(1-ratio) + lookup_tab[idx+1]*ratio;
+            }
+            break;
+        }
         case GAUSSIAN:
         {
             double d = x_ik - x_jk;
@@ -227,6 +248,18 @@ double kernel_data::K(size_t i, const std::vector<double>& x_j, const std::vecto
             res += v[k]*kernel_one(x[i*n_feature+k], x_j[k]);
     }
     return res;
+}
+
+const size_t kernel_data::tab_size = 10000;
+
+void kernel_data::init_gaussian_loopup_table()
+{
+    lookup_tab = std::vector<double>(tab_size+1);
+    for (size_t i=0;i<tab_size+1;++i)
+    {
+        double d = ((double)i)/tab_size;
+        lookup_tab[i] = exp(-gamma*d*d);
+    }
 }
 
 } // namespace rkm
