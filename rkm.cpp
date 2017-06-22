@@ -12,6 +12,8 @@ namespace RKM
         size_t n_sample = 0;
         double gamma;
 
+        eq_precomputed = false;
+
         std::string str;
         // input file
         std::ifstream fin (input_file_name, std::ios_base::in);
@@ -65,6 +67,11 @@ namespace RKM
             else if (str.compare("tau") == 0)
             {
                 fin>>tau;
+            }
+            else if (str.compare("precompute_eq") == 0)
+            {
+                fin>>eq_file;
+                eq_precomputed = true;
             }
             else
             {
@@ -135,6 +142,49 @@ namespace RKM
         // Normalization
         kd->scale_features();
 
+        // Pre-compute e^T times Q_t
+        if (eq_precomputed)
+        {
+            eQ = std::vector<double>(n_sample*n_feature, 0.0);
+            std::ifstream f_eq (eq_file, std::ios_base::in);
+            if (f_eq.good()) // eQ pre-computed and saved, file exists
+            {
+                for (size_t i=0;i<n_sample;++i)
+                {
+                    for (size_t j=0;j<n_feature;++j)
+                    {
+                        f_eq>>eQ[i*n_feature+j];
+                    }
+                }
+                f_eq.close();
+            }
+            else // file does not exist, compute and save to file
+            {
+                f_eq.close();
+                for (size_t i=0;i<n_sample;++i)
+                {
+                    for (size_t j=0;j<n_sample;++j)
+                    {
+                        for (size_t t=0;t<n_feature;++t)
+                        {
+                            eQ[i*n_feature+j] += Q(i, j, t);
+                        }
+                    }
+                }
+                // write to file
+                std::ofstream f_eq_out(eq_file, std::ios_base::out);
+                for (size_t i=0;i<n_sample;++i)
+                {
+                    for (size_t j=0;j<n_feature;++j)
+                    {
+                        f_eq_out<<eQ[i*n_feature+j]<<" ";
+                    }
+                    f_eq_out<<"\n";
+                }
+                f_eq_out.close();
+            }
+        }
+
     } //rkm::rkm(const std::string& input_file_name)
 
     rkm::~rkm()
@@ -179,7 +229,14 @@ namespace RKM
 
     double rkm::Q(size_t i, size_t j, size_t k) const
     {
-        return (kd->kernel_one(i, j, k))*(kd->get_label(i))*(kd->get_label(j));
+        if (kd->get_label(i) != kd->get_label(j))
+        {
+            return (- kd->kernel_one(i, j, k));
+        }
+        else
+        {
+            return (kd->kernel_one(i, j, k));
+        }
     }
 
     void rkm::solve()
@@ -1027,30 +1084,48 @@ namespace RKM
                 if (idx_k/100 == idx_k*1.0/100)
                     std::cout<<"\t\tFeature: "<< idx_k<<"\n";
                 new_beta[idx_k] = 0;
-                for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+                if (eq_precomputed)
                 {
-                    double tmp = 0;
-                    for (size_t idx_j=0;idx_j<n_sample;++idx_j)
+                    double eQa = 0;
+                    double aQa = 0;
+                    for (size_t idx_i=0;idx_i<n_sample;++idx_i)
                     {
-                        if (alpha[idx_j]>0)
+                        if (alpha[idx_i] > 0)
                         {
-                            tmp += Q(idx_i, idx_j, idx_k)*alpha[idx_j];
+                            eQa += eQ[idx_i*n_feature+idx_k]*alpha[idx_i];
+                        }
+                        for (size_t idx_j=0;idx_j<n_sample;++idx_j)
+                        {
+                            if (alpha[idx_j]>0)
+                            {
+                                aQa += alpha[idx_i]*Q(idx_i, idx_j, idx_k)*alpha[idx_j];
+                            }
                         }
                     }
-                    new_beta[idx_k] += (Cb - alpha[idx_i])*tmp;
-                    //new_beta[idx_k] += (Cb)*tmp;
-                    //new_beta[idx_k] += (alpha[idx_i])*tmp;
+                    new_beta[idx_k] = Cb*eQa - aQa;
                 }
-                double temp = new_beta[idx_k];
+                else
+                {
+                    for (size_t idx_i=0;idx_i<n_sample;++idx_i)
+                    {
+                        double tmp = 0;
+                        for (size_t idx_j=0;idx_j<n_sample;++idx_j)
+                        {
+                            if (alpha[idx_j]>0)
+                            {
+                                tmp += Q(idx_i, idx_j, idx_k)*alpha[idx_j];
+                            }
+                        }
+                        new_beta[idx_k] += (Cb - alpha[idx_i])*tmp;
+                        //new_beta[idx_k] += (Cb)*tmp;
+                        //new_beta[idx_k] += (alpha[idx_i])*tmp;
+                    }
+                }
                 if (new_beta[idx_k]<0)
                 {
                     new_beta[idx_k] = 0;
                 }
                 sum += new_beta[idx_k];
-                //if (new_beta[idx_k]>1.0/n_feature)
-                //{
-                //    new_beta[idx_k] = 1.0/n_feature;
-                //}
                 //std::cout<<new_beta[idx_k]<<"\t";
                 //beta_d_obj -= new_beta[idx_k]*(new_beta[idx_k]/2.0-temp);
                 //beta_d_obj += beta[idx_k]*(beta[idx_k]/2.0-temp);

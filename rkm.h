@@ -30,12 +30,14 @@ class rkm
         void write_model_file() const;
         void read_model_file(const std::string& model_file_name);
         void read_model_file();
+        void precompute_eq();
     private:
         // Data related
         kernel_data* kd;
         std::string train_file;
         std::string test_file;
         std::string model_file;
+        std::string eq_file;
 
         // Model related
         // Cost coefficients
@@ -55,6 +57,7 @@ class rkm
         std::vector<double> Ga;
         std::vector<double> Gb;
         std::vector<double> Q_alpha;
+        std::vector<double> eQ;
 
         enum alpha_status_type { LOWER_BOUND, UPPER_BOUND, FREE };
         std::vector<alpha_status_type> alpha_status;
@@ -66,6 +69,7 @@ class rkm
 
         // Program related
         int verbose;
+        bool eq_precomputed;
         // Encapsultate for readability
         double K(size_t i, size_t j) const;
         double Y(size_t i) const;
