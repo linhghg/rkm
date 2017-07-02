@@ -210,11 +210,12 @@ double kernel_data::kernel_one(double x_ik, double x_jk) const
         case FAST_GAUSSIAN:
         {
             double d = x_ik - x_jk;
-            double tmp = 1-gamma*d*d/16;  //1+x/n
+            double tmp = 1-gamma*d*d/32;  //1+x/n
             tmp *= tmp; // ^2
             tmp *= tmp; // ^4
             tmp *= tmp; // ^8
             tmp *= tmp; // ^16
+            tmp *= tmp; // ^32
             res = tmp;
             break;
         }

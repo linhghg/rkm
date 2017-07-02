@@ -149,6 +149,10 @@ namespace RKM
             std::ifstream f_eq (eq_file, std::ios_base::in);
             if (f_eq.good()) // eQ pre-computed and saved, file exists
             {
+                if (verbose)
+                {
+                    std::cout<<"Precomputation file found, loading...\n";
+                }
                 for (size_t i=0;i<n_sample;++i)
                 {
                     for (size_t j=0;j<n_feature;++j)
@@ -161,17 +165,25 @@ namespace RKM
             else // file does not exist, compute and save to file
             {
                 f_eq.close();
+                if (verbose)
+                {
+                    std::cout<<"Precomputation file not found, precomputing...\n";
+                }
                 for (size_t i=0;i<n_sample;++i)
                 {
                     for (size_t j=0;j<n_sample;++j)
                     {
                         for (size_t t=0;t<n_feature;++t)
                         {
-                            eQ[i*n_feature+j] += Q(i, j, t);
+                            eQ[i*n_feature+t] += Q(i, j, t);
                         }
                     }
                 }
                 // write to file
+                if (verbose)
+                {
+                    std::cout<<"Writing to precomputation file...\n";
+                }
                 std::ofstream f_eq_out(eq_file, std::ios_base::out);
                 for (size_t i=0;i<n_sample;++i)
                 {
